@@ -5,10 +5,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import PyQt5.QtWidgets as qtw
-import PyQt5.QtGui as qtg
 import pandas as pd
 from tkinter import filedialog
-from tarrance.tarrance import Tarrance
+from clients import Tarrance, Baselice
 
 
 class MainWindow(qtw.QWidget):
@@ -17,22 +16,23 @@ class MainWindow(qtw.QWidget):
         self.df_initialized = False
         self.df = pd.DataFrame()
         self.setWindowTitle("Sample Automation")
-        self.setLayout(qtw.QVBoxLayout())
+        self.setLayout(qtw.QHBoxLayout())
 
         self._file_path = None
         self.init_ui()
         self.show()
 
     def init_ui(self):
+        initial_layout = qtw.QVBoxLayout()
         self.client_label = qtw.QLabel("Select Client")
-        self.layout().addWidget(self.client_label)
+        initial_layout.addWidget(self.client_label)
 
         self.client_combo_box = qtw.QComboBox(self)
         self.client_combo_box.addItem("Tarrance")
         self.client_combo_box.addItem("I360")
         self.client_combo_box.addItem("Other")
         self.client_combo_box.addItem("Other 2")
-        self.layout().addWidget(self.client_combo_box)
+        initial_layout.addWidget(self.client_combo_box)
 
         self.candidate_names_text_box = qtw.QTextEdit(
             self,
@@ -41,44 +41,62 @@ class MainWindow(qtw.QWidget):
             readOnly=False
         )
 
-        self.layout().addWidget(self.candidate_names_text_box)
+        initial_layout.addWidget(self.candidate_names_text_box)
 
         self.path_label = qtw.QLabel("Select a file to begin")
-        self.layout().addWidget(self.path_label)
+        initial_layout.addWidget(self.path_label)
 
         path_btn = qtw.QPushButton("Select File", clicked=lambda: self.get_file_path())
-        self.layout().addWidget(path_btn)
+        initial_layout.addWidget(path_btn)
 
         check_headers_btn = qtw.QPushButton("Check Headers", clicked=self.check_headers)
-        self.layout().addWidget(check_headers_btn)
+        initial_layout.addWidget(check_headers_btn)
 
-        rename_btn = qtw.QPushButton("Validate Headers", clicked=self.validate_headers)
-        self.layout().addWidget(rename_btn)
+        rename_btn = qtw.QPushButton("Update Headers", clicked=self.update_headers)
+        initial_layout.addWidget(rename_btn)
 
         self.process_data_btn = qtw.QPushButton("Process Data", clicked=self.process_data)
-        self.layout().addWidget(self.process_data_btn)
+        initial_layout.addWidget(self.process_data_btn)
+
+        self.layout().addLayout(initial_layout)
 
     def check_headers(self):
-        self.get_data()
-        self.display_column_headers()
 
-    def validate_headers(self):
+        try:
+            self.get_data()
+            self.replace_header_names()
+            self.display_column_headers()
+        except Exception as e:
+            print(traceback.format_exc(), e)
+
+
+    def update_headers(self):
         self.rename_columns()
+        self.replace_header_names()
         self.display_column_headers()
 
-        if 'FNAME' in self.df.columns and 'LNAME' in self.df.columns:
-            self.df['FNAME'] = self.df['FNAME'].astype(str)
-            self.df['LNAME'] = self.df['LNAME'].astype(str)
-            self.df['full_name'] = self.df['FNAME'] + ' ' + self.df['LNAME']
+    def replace_header_names(self):
+        column_names_to_check = {
+            'FNAME': ['FIRSTNAME'],
+            'LNAME': ['LASTNAME'],
+        }
+        for replacement, check_list in column_names_to_check.items():
+            for check in check_list:
+                if check in self.df.columns:
+                    self.df.rename(columns={check: replacement}, inplace=True)
+
+        self.df['FNAME'] = self.df['FNAME'].astype(str)
+        self.df['LNAME'] = self.df['LNAME'].astype(str)
+        self.df['FULL_NAME'] = self.df['FNAME'] + ' ' + self.df['LNAME']
 
         candidate_names = self.candidate_names_text_box.toPlainText().split("\n")
         candidate_names = [name.strip().upper() for name in candidate_names if name.strip()]
 
         if candidate_names:
-            self.df = self.df[~self.df['full_name'].isin(candidate_names)].reset_index(drop=True)
+            self.df = self.df[~self.df['FULL_NAME'].isin(candidate_names)].reset_index(drop=True)
 
-        if 'full_name' in self.df.columns:
-            self.df.drop(columns=['full_name'], inplace=True)
+        if 'FULL_NAME' in self.df.columns:
+            self.df.drop(columns=['FULL_NAME'], inplace=True)
 
     def get_file_path(self):
         self.file_path = filedialog.askopenfilename(initialdir=os.environ.get("PROJECT_DIRECTORY"))
@@ -94,6 +112,8 @@ class MainWindow(qtw.QWidget):
         match file_type:
             case 'xlsx':
                 print('xlsx')
+                # d = pd.read_excel(self.file_path)
+                # print('d shape', d.shape[0])
                 self.df = pd.read_excel(self.file_path)
             case 'xls':
                 print('xls')
@@ -107,15 +127,56 @@ class MainWindow(qtw.QWidget):
             case _:
                 raise f"File type not supported"
 
+        self.df.columns = [col.upper() for col in self.df.columns]
+        # print(self.df['REGION'].value_counts())
+        # print(self.df['THREEAGE'].value_counts())
+        # print(self.df['GENDER'].value_counts())
+        # self.df.rename(columns={'FirstName': "FNAME", 'LastName': "LNAME"}, inplace=True)
+        # print(self.df['zip'].value_counts())
+        # print('get data', self.df.shape[0])
+
     def select_clients(self):
+        client = None
         client_selection = self.client_combo_box.currentText()
         match client_selection:
             case 'Tarrance':
                 print("Tarrance selected")
                 checked_headers = self.get_checked_headers()
-                tarrance = Tarrance(self.df, checked_headers)
+                client = Tarrance(self.df, checked_headers)
+            case 'Baselice':
+                print("Baselice selected")
+                checked_headers = self.get_checked_headers()
+                client = Baselice(self.df, checked_headers)
             case _:
                 ''
+
+        if client:
+
+            project_number = os.path.basename(os.path.dirname(os.path.dirname(self.file_path)))
+            save_path = f'{os.environ.get("PROJECT_DIRECTORY")}/{project_number}/SAMPLE/auto/'
+            if not os.path.exists(save_path):
+                os.makedirs(save_path)
+            print(project_number)
+            lsam_count = 1
+            csam_count = 1
+            while True:
+                if not os.path.exists(f'{save_path}{project_number}LSAM.csv'):
+                    client.final_landline.to_csv(f'{save_path}{project_number}LSAM.csv', index=False)
+                    break
+                if not os.path.exists(f'{save_path}{project_number}LSAM{lsam_count}.csv'):
+                    client.final_landline.to_csv(f'{save_path}{project_number}LSAM{lsam_count}.csv', index=False)
+                    break
+                lsam_count += 1
+
+            while True:
+                if not os.path.exists(f'{save_path}{project_number}CSAM.csv'):
+                    client.final_cell.to_csv(f'{save_path}{project_number}CSAM.csv', index=False)
+                    break
+                if not os.path.exists(f'{save_path}{project_number}CSAM{csam_count}.csv'):
+                    client.final_cell.to_csv(f'{save_path}{project_number}CSAM{csam_count}.csv', index=False)
+                    break
+                csam_count += 1
+        print("Finished processing")
 
     def display_column_headers(self):
         # Create a new layout for column headers
@@ -168,6 +229,7 @@ class MainWindow(qtw.QWidget):
         return checked_headers
 
     def process_data(self):
+        # print(self.df.shape[0])
         self.select_clients()
 
     @property
@@ -187,6 +249,7 @@ class MainWindow(qtw.QWidget):
             df['MD'] = ''
             df['BATCH'] = ''
             self.df_initialized = True
+
         self._df = df
 
 
