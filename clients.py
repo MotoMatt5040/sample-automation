@@ -1,11 +1,14 @@
-from machine_learning import stratified_split
+import traceback
 import pandas as pd
+
+from machine_learning import stratified_split
 from wdnc import wdnc
+from datetime import date
 
 
 class Tarrance:
 
-    def __init__(self, df, stratify_by: list):
+    def __init__(self, df: pd.DataFrame, stratify_by: list):
         self.data = df
         self.stratify_columns = stratify_by
         self.landline_df = df
@@ -52,9 +55,10 @@ class Tarrance:
 
     @landline_df.setter
     def landline_df(self, df):
-        df = df.where(df['CELL'] == 'N').dropna().reset_index(drop=True)
-        df = df.where(~df['PHONE'].isin(wdnc)).dropna().reset_index(drop=True)
-        df.VTYPE = 1
+        df = df[df['CELL'] == 'N']
+        df = df[~df['PHONE'].isin(wdnc)]
+        df.loc[:, 'VTYPE'] = 1
+        df = df.reset_index(drop=True)
         self._landline_df = df
 
     @property
@@ -63,9 +67,10 @@ class Tarrance:
 
     @cell_df.setter
     def cell_df(self, df):
-        df = df.where(df['CELL'] == 'Y').dropna().reset_index(drop=True)
-        df.VTYPE = 2
-        df.MD = 1
+        df = df[df['CELL'] == 'Y']
+        df.loc[:, 'VTYPE'] = 2
+        df.loc[:, 'MD'] = 1
+        df = df.reset_index(drop=True)
         self._cell_df = df
 
     @property
@@ -79,14 +84,21 @@ class Tarrance:
 
 class Baselice:
 
-    def __init__(self, df, stratify_by: list):
-        self.data = df
-        self.stratify_columns = stratify_by
-        self.landline_df = df
-        self.cell_df = df
-        self.headers = df.columns.to_list()
+    def __init__(self, df: pd.DataFrame, stratify_by: list):
+        try:
+            # print(df.head().to_string())
+            self.data = df
+            self.stratify_columns = stratify_by
+            self.landline_df = df
+            self.cell_df = df
+            self.headers = df.columns.to_list()
+            # print(self.landline_df.head().to_string())
+            # print(self.cell_df.head().to_string())
 
-        landline_batches, cell_batches = self.batchify()
+
+            landline_batches, cell_batches = self.batchify()
+        except Exception as e:
+            print(traceback.format_exc(), e)
         # plot_batches(landline_batches, stratify_by, source='landline_')
         # plot_batches(cell_batches, stratify_by, source='cell_')
 
@@ -100,8 +112,8 @@ class Baselice:
         self._final_cell = pd.concat(cell_batches).reset_index(drop=True)
 
     def batchify(self) -> tuple:
-        landline_batches = stratified_split(self.landline_df, self.stratify_columns)
-        cell_batches = stratified_split(self.cell_df, self.stratify_columns)
+        landline_batches = stratified_split(self.landline_df, self.stratify_columns, n=20)
+        cell_batches = stratified_split(self.cell_df, self.stratify_columns, n=20)
         return landline_batches, cell_batches
 
     @property
@@ -126,9 +138,11 @@ class Baselice:
 
     @landline_df.setter
     def landline_df(self, df):
-        df = df.where(df['STYPE'] == 1).dropna().reset_index(drop=True)
-        df = df.where(~df['TELL'].isin(wdnc)).dropna().reset_index(drop=True)
-        df.VTYPE = 1
+        df.to_csv('landline.csv', index=False)
+        df = df[df['STYPE'] == '1']
+        df = df[~df['TEL'].isin(wdnc)]
+        df.loc[:, 'VTYPE'] = 1
+        df = df.reset_index(drop=True)
         self._landline_df = df
 
     @property
@@ -137,9 +151,10 @@ class Baselice:
 
     @cell_df.setter
     def cell_df(self, df):
-        df = df.where(df['STYPE'] == 2).dropna().reset_index(drop=True)
-        df.VTYPE = 2
-        df.MD = 1
+        df = df[df['STYPE'] == '2']
+        df.loc[:, 'VTYPE'] = 2
+        df.loc[:, 'MD'] = 1
+        df = df.reset_index(drop=True)
         self._cell_df = df
 
     @property
@@ -151,5 +166,76 @@ class Baselice:
         return self._final_cell
 
 
+class I360:
+
+    def __init__(self, df: pd.DataFrame, stratify_by: list, source: str):
+        try:
+            df['PHONE'] = df['PHONE'].str.strip()
+            df['CELL PHONE'] = df['CELL PHONE'].str.strip()
+
+            df.loc[(df['PHONE'] != '') & (df['CELL PHONE'] == ''), 'SOURCE'] = 1
+            df.loc[(df['CELL PHONE'] != '') & (df['PHONE'] == ''), 'SOURCE'] = 2
+            df.loc[(df['PHONE'] != '') & (df['CELL PHONE'] != ''), 'SOURCE'] = 3
+
+            df['IAGE'] = date.today().year - df['BIRTH YEAR'].astype(int)
+            df.loc[df['IAGE'] > 99, 'IAGE'] = 99
+
+            party_mapping = {
+                'Republican': 1,
+                'R': 1,
+                'Democrat': 2,
+                'D': 2,
+                'Unaffiliated/Non-Partisan': 3,
+                'I': 3,
+                'Decline to State': 3
+            }
+
+            df['PRTY'] = df['PARTY'].map(party_mapping).fillna(4).astype(int)
+
+            # df['REGN'] =
+
+            df.to_csv('i360.csv', index=False)
+            self.stratify_columns = stratify_by
+            self.set_df(df, source)
+            self.headers = df.columns.to_list()
+
+            batches = self.batchify()
+
+            for i, batch in enumerate(batches):
+                batch['BATCH'] = i + 1
+
+            self._final_df = pd.concat(batches).reset_index(drop=True)
+        except Exception as e:
+            print(traceback.format_exc(), e)
+
+    def batchify(self) -> tuple:
+        final_batches = stratified_split(self.df, self.stratify_columns, n=5)
+        return final_batches
+
+    @property
+    def headers(self):
+        return self._headers
+
+    @headers.setter
+    def headers(self, headers=None):
+        self._headers = headers
+
+    @property
+    def df(self):
+        return self._df
+
+    def set_df(self, df, source):
+        if source == 'LANDLINE':
+            df = df[~df['PHONE'].isin(wdnc)]
+            df.loc[:, 'VTYPE'] = 1
+        elif source == 'CELL':
+            df.loc[:, 'VTYPE'] = 2
+            df.loc[:, 'MD'] = 1
+        df = df.reset_index(drop=True)
+        self._df = df
+
+    @property
+    def final_df(self):
+        return self._final_df
 
 
