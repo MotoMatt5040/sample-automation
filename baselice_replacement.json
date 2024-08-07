@@ -1,0 +1,14 @@
+{
+  "SVID": [
+    "STATEVOTERID"
+  ],
+  "ZIP": [
+    "ZIPCODE"
+  ],
+  "REGN": [
+    "REGION"
+  ],
+  "CFIPS": [
+    "FIPS"
+  ]
+}
