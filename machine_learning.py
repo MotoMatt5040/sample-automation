@@ -21,15 +21,9 @@ def stratified_split(df, columns, n: int = 20):
     low_counts = df[stratify_col.isin(low_count_groups)]
     df = df[~stratify_col.isin(low_count_groups)]
 
-    # print("Low count groups:")
-    # print(low_count_groups)
-    # print("Stratify column distribution (excluding low counts):")
-    # print(df[columns].astype(str).agg('-'.join, axis=1).value_counts())
 
     for i in range(n):
         stratify_col = df[columns].astype(str).agg('-'.join, axis=1)
-        # print("Stratify column distribution:")
-        # print(stratify_col.value_counts())
 
         if i == n - 1:
             batch = df
@@ -40,8 +34,6 @@ def stratified_split(df, columns, n: int = 20):
         batches.append(batch)
 
     if batches:
-        # print(low_counts.to_string())
-        # print(low_counts.shape[0])
         batches[0] = pd.concat([batches[0], low_counts], ignore_index=True)
 
     return batches
@@ -87,5 +79,3 @@ def plot_batches(batches, columns, source, save_dir='plots'):
         plot_filename = os.path.join(save_dir, f'{source}batch_{i + 1}.png')
         plt.savefig(plot_filename, format='png', dpi=300, bbox_inches='tight', pad_inches=0.1)
         plt.close()  # Close the figure to free memory
-
-        # print(f"Batch {i + 1} plots saved as {plot_filename}")
