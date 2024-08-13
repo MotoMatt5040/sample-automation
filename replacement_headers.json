@@ -6,5 +6,188 @@
   "LNAME": [
     "LASTNAME",
     "LAST NAME"
+  ],
+  "MNAME": [
+    "MIDDLENAME",
+    "MIDDLE NAME"
+  ],
+  "LREL": [
+    "PHONE RELIABILITY"
+  ],
+  "CREL": [
+    "CELLPHONE RELIABILITY",
+    "CELL PHONE RELIABILITY"
+  ],
+  "DOBY": [
+    "BIRTH YEAR"
+  ],
+  "RDATE": [
+    "REGISTRATION DATE"
+  ],
+  "ACTIN": [
+    "ACTIVE/INACTIVE"
+  ],
+  "ABSST": [
+    "ABSENTEE STATUS"
+  ],
+  "CD": [
+    "CONGRESSIONAL DISTRICT",
+    "CONGRESSIONAL DISTRICTS",
+    "OFFICIAL CONGRESSIONAL DISTRICT",
+    "OFFICIAL CONGRESSIONAL DISTRICTS"
+  ],
+  "SD": [
+    "STATE SENATE DISTRICT",
+    "STATE SENATE DISTRICTS",
+    "OFFICIAL STATE SENATE DISTRICT",
+    "OFFICIAL STATE SENATE DISTRICTS"
+  ],
+  "HD": [
+    "STATE HOUSE DISTRICT",
+    "STATE HOUSE DISTRICTS",
+    "OFFICIAL STATE HOUSE DISTRICT",
+    "OFFICIAL STATE HOUSE DISTRICTS"
+  ],
+  "MUNI": [
+    "MUNICIPALITY/TOWN CODE"
+  ],
+  "TOWNNAME": [
+    "MUNICIPALITY/TOWN NAME"
+  ],
+  "PNUM": [
+    "PRECINCT NUMBER"
+  ],
+  "DMANAME": [
+    "DMA NAME"
+  ],
+  "ST": [
+    "REGISTERED STATE"
+  ],
+  "IZIP": [
+    "ZIPCODE",
+    "ZIP",
+    "ZIP CODE"
+  ],
+  "ZIP4": [
+    "REGISTERED ZIP4",
+    "REGISTERED ZIP 4"
+  ],
+  "MARITAL": [
+    "MARITAL STATUS"
+  ],
+  "CRACE": [
+    "COALESCE RACE"
+  ],
+  "MODEDU": [
+    "MODELED EDUCATION"
+  ],
+  "GE14": [
+    "2014 GENERAL ELECTION"
+  ],
+  "GE15": [
+    "2015 GENERAL ELECTION"
+  ],
+  "GE16": [
+    "2016 GENERAL ELECTION"
+  ],
+  "GE17": [
+    "2017 GENERAL ELECTION"
+  ],
+  "GE18": [
+    "2018 GENERAL ELECTION"
+  ],
+  "GE19": [
+    "2019 GENERAL ELECTION"
+  ],
+  "GE20": [
+    "2020 GENERAL ELECTION"
+  ],
+  "GE21": [
+    "2021 GENERAL ELECTION"
+  ],
+  "GE22": [
+    "2022 GENERAL ELECTION"
+  ],
+  "GE23": [
+    "2023 GENERAL ELECTION"
+  ],
+  "GE24": [
+    "2024 GENERAL ELECTION"
+  ],
+  "PR14": [
+    "2014 PRIMARY ELECTION"
+  ],
+  "PR15": [
+    "2015 PRIMARY ELECTION"
+  ],
+  "PR16": [
+    "2016 PRIMARY ELECTION"
+  ],
+  "PR17": [
+    "2017 PRIMARY ELECTION"
+  ],
+  "PR18": [
+    "2018 PRIMARY ELECTION"
+  ],
+  "PR19": [
+    "2019 PRIMARY ELECTION"
+  ],
+  "PR20": [
+    "2020 PRIMARY ELECTION"
+  ],
+  "PR21": [
+    "2021 PRIMARY ELECTION"
+  ],
+  "PR22": [
+    "2022 PRIMARY ELECTION"
+  ],
+  "PR23": [
+    "2023 PRIMARY ELECTION"
+  ],
+  "PR24": [
+    "2024 PRIMARY ELECTION"
+  ],
+  "PP16": [
+    "2016 PRESIDENTIAL PRIMARY"
+  ],
+  "PP20": [
+    "2020 PRESIDENTIAL PRIMARY"
+  ],
+  "PP24": [
+    "2024 PRESIDENTIAL PRIMARY"
+  ],
+  "POLAF": [
+    "POLITICAL AFFINITY"
+  ],
+  "L4PE": [
+    "LAST FOUR PRIMARY ELECTIONS"
+  ],
+  "L4GE": [
+    "LAST FOUR GENERAL ELECTIONS"
+  ],
+  "VPROP": [
+    "VOTING PROPENSITY"
+  ],
+  "TRUMP": [
+    "TRUMP FAVORABILITY"
+  ],
+  "BIDEN": [
+    "BIDEN APPROVAL"
+  ],
+  "GCD22": [
+    "GEOCODED CONGRESSIONAL DISTRICT"
+  ],
+  "GSD22": [
+    "GEOCODED STATE SENATE DISTRICT"
+  ],
+  "GHD22": [
+    "GEOCODED STATE HOUSE DISTRICT"
+  ],
+  "SVID": [
+    "STATEVOTERID",
+    "STATE VOTER ID"
+  ],
+  "STE2": [
+    "STATE"
   ]
 }

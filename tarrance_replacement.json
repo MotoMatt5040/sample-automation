@@ -1,14 +1,12 @@
 {
-  "SVID": [
-    "STATEVOTERID"
-  ],
-  "ZIP": [
-    "ZIPCODE"
-  ],
   "REGN": [
     "REGION"
   ],
   "CFIPS": [
     "FIPS"
+  ],
+  "GEND": [
+    "SEX",
+    "GENDER"
   ]
 }
