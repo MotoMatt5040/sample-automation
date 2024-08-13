@@ -1,7 +1,7 @@
 import traceback
 import pandas as pd
 
-from machine_learning import stratified_split
+from machine_learning import stratified_split, plot_batches
 from wdnc import wdnc
 from datetime import date
 
@@ -10,6 +10,7 @@ class Tarrance:
 
     def __init__(self, df: pd.DataFrame, stratify_by: list):
         self.data = df
+
         self.stratify_columns = stratify_by
         self.landline_df = df
         self.cell_df = df
@@ -33,12 +34,18 @@ class Tarrance:
         cell_batches = stratified_split(self.cell_df, self.stratify_columns)
         return landline_batches, cell_batches
 
+    def get_area_codes(self):
+        return self.data['PHONE'].str[:3].value_counts().head(5)
+
     @property
     def data(self):
         return self._data
 
     @data.setter
     def data(self, df):
+        df['REGN'] = df['REGN'].astype(str).str.pad(2, fillchar='0')
+        df['$N'] = df['PHONE']
+        df['SD'] = df['SD'].astype(str).str.pad(2, fillchar='0')
         self._data = df
 
     @property
@@ -112,9 +119,12 @@ class Baselice:
         self._final_cell = pd.concat(cell_batches).reset_index(drop=True)
 
     def batchify(self) -> tuple:
-        landline_batches = stratified_split(self.landline_df, self.stratify_columns, n=20)
-        cell_batches = stratified_split(self.cell_df, self.stratify_columns, n=20)
+        landline_batches = stratified_split(self.landline_df, self.stratify_columns)
+        cell_batches = stratified_split(self.cell_df, self.stratify_columns)
         return landline_batches, cell_batches
+
+    def get_area_codes(self):
+        return self.data['TEL'].str[:3].value_counts().head(5)
 
     @property
     def data(self):
@@ -122,6 +132,10 @@ class Baselice:
 
     @data.setter
     def data(self, df):
+        if df.get('REGN'):
+            if df['REGN'].value_counts().shape[0] > 9:
+                df['REGN'] = df['REGN'].astype(str).str.pad(2, fillchar='0')
+        df['$N'] = df['TEL']
         self._data = df
 
     @property
@@ -168,17 +182,44 @@ class Baselice:
 
 class I360:
 
-    def __init__(self, df: pd.DataFrame, stratify_by: list, source: str):
+    def __init__(self, df: pd.DataFrame, stratify_by: list, source: str, sample_frame: pd.DataFrame = pd.DataFrame()):
+        self.source = source
+        '''
+        
+        IF 2 or more rows have the same UID (REGARDLESS OF OTHER DATA) -> Delete all except 1 row
+        
+        AGE <- youngest age first
+        FNAME
+        LNAME
+        PHONE
+        GENDER
+        PRTY
+        
+        
+        [
+            [FNAME, LNAME, GEND, PRTY, IAGE], <- Youngest
+            [FNME2, LNME2, GEND2, PRTY2, IAGE2],
+            [FNME3, LNME3, GEND3, PRTY3, IAGE3], 
+            [FNME4, LNME4, GEND4, PRTY4, IAGE4] <- Oldest
+        ]
+        
+        '''
+
+        df['RDATE'] = pd.to_datetime(df['RDATE'], errors='coerce')
+        df['RDATE'] = df['RDATE'].dt.strftime('%Y%m%d')
+
         try:
             df['PHONE'] = df['PHONE'].str.strip()
-            df['CELL PHONE'] = df['CELL PHONE'].str.strip()
+            df['CELL'] = df['CELL'].str.strip()
 
-            df.loc[(df['PHONE'] != '') & (df['CELL PHONE'] == ''), 'SOURCE'] = 1
-            df.loc[(df['CELL PHONE'] != '') & (df['PHONE'] == ''), 'SOURCE'] = 2
-            df.loc[(df['PHONE'] != '') & (df['CELL PHONE'] != ''), 'SOURCE'] = 3
+            df.loc[(df['PHONE'] != '') & (df['CELL'] == ''), 'SOURCE'] = 1
+            df.loc[(df['CELL'] != '') & (df['PHONE'] == ''), 'SOURCE'] = 2
+            df.loc[(df['PHONE'] != '') & (df['CELL'] != ''), 'SOURCE'] = 3
 
-            df['IAGE'] = date.today().year - df['BIRTH YEAR'].astype(int)
+            df['IAGE'] = date.today().year - df['DOBY'].astype(int)
+            df['IAGE'] = df['IAGE'].fillna(0).astype(int)
             df.loc[df['IAGE'] > 99, 'IAGE'] = 99
+            df = df.sort_values(by='IAGE', ascending=True)
 
             party_mapping = {
                 'Republican': 1,
@@ -192,7 +233,63 @@ class I360:
 
             df['PRTY'] = df['PARTY'].map(party_mapping).fillna(4).astype(int)
 
-            # df['REGN'] =
+            if source == 'LANDLINE':
+
+                household_columns = [
+                    'FNME2', 'LNME2', 'GEND2', 'PRTY2', 'IAGE2',
+                    'FNME3', 'LNME3', 'GEND3', 'PRTY3', 'IAGE3',
+                    'FNME4', 'LNME4', 'GEND4', 'PRTY4', 'IAGE4'
+                ]
+                groups = {
+                    '2 dupes': pd.DataFrame(),
+                    '3 dupes': pd.DataFrame(),
+                    '4 dupes': pd.DataFrame()
+                }
+
+                for col in household_columns:
+                    df[col] = ''
+
+                group2 = []
+                group3 = []
+                group4 = []
+
+                for phone, group in df.groupby('PHONE'):
+                    if len(group) > 1:
+
+                        first_index = group.index[0]
+                        for i, (fname, lname, gend, prty, iage) in enumerate(zip(group['FNAME'][1:], group['LNAME'][1:], group['GEND'][1:], group['PRTY'][1:], group['IAGE'][1:]), start=2):
+                            df.at[first_index, f'FNME{i}'] = fname
+                            df.at[first_index, f'LNME{i}'] = lname
+                            df.at[first_index, f'GEND{i}'] = gend
+                            df.at[first_index, f'PRTY{i}'] = prty
+                            df.at[first_index, f'IAGE{i}'] = iage
+
+                        if len(group) == 2:
+                            group2.append(group.iloc[1:].copy())
+                        elif len(group) == 3:
+                            group3.append(group.iloc[1:].copy())
+                        elif len(group) == 4:
+                            group4.append(group.iloc[1:].copy())
+
+                if group2:
+                    groups['2 dupes'] = pd.concat(group2)
+                if group3:
+                    groups['3 dupes'] = pd.concat(group3)
+                if group4:
+                    groups['4 dupes'] = pd.concat(group4)
+
+
+
+
+
+                self._groups = groups
+
+
+                # import json
+                # print(json.dumps(groups, indent=4))
+
+                # Remove the duplicates based on the 'PHONE' column, keeping the first occurrence
+                df = df.drop_duplicates(subset=['PHONE'])
 
             df.to_csv('i360.csv', index=False)
             self.stratify_columns = stratify_by
@@ -205,12 +302,16 @@ class I360:
                 batch['BATCH'] = i + 1
 
             self._final_df = pd.concat(batches).reset_index(drop=True)
+            # plot_batches(batches, stratify_by, source='landline_')
         except Exception as e:
             print(traceback.format_exc(), e)
 
     def batchify(self) -> tuple:
-        final_batches = stratified_split(self.df, self.stratify_columns, n=5)
+        final_batches = stratified_split(self.df, self.stratify_columns)
         return final_batches
+
+    def get_area_codes(self):
+        return self.df['PHONE'].str[:3].value_counts().head(5)
 
     @property
     def headers(self):
@@ -225,12 +326,26 @@ class I360:
         return self._df
 
     def set_df(self, df, source):
+        df = df.copy()
+        df['SD'] = df['SD'].astype(str).str.pad(3, fillchar='0')
+        df['GCCD20'] = df['GCCD20'].astype(str).str.pad(2, fillchar='0')
+        df['GCSSD20'] = df['GCSSD20'].astype(str).str.pad(3, fillchar='0')
+        df['GCSHD20'] = df['GCSHD20'].astype(str).str.pad(3, fillchar='0')
+        df['GCD22'] = df['GCD22'].astype(str).str.pad(2, fillchar='0')
+        df['GSD22'] = df['GSD22'].astype(str).str.pad(3, fillchar='0')
+        df['GHD22'] = df['GHD22'].astype(str).str.pad(3, fillchar='0')
+
         if source == 'LANDLINE':
-            df = df[~df['PHONE'].isin(wdnc)]
+            df['$N'] = df['PHONE']
+            # Make a copy of the filtered DataFrame
+            df = df[~df['PHONE'].isin(wdnc)].copy()
             df.loc[:, 'VTYPE'] = 1
         elif source == 'CELL':
+            df['$N'] = df['CELL']
             df.loc[:, 'VTYPE'] = 2
             df.loc[:, 'MD'] = 1
+
+        # Reset index and store the DataFrame
         df = df.reset_index(drop=True)
         self._df = df
 
@@ -238,4 +353,18 @@ class I360:
     def final_df(self):
         return self._final_df
 
+    @property
+    def groups(self):
+        return self._groups
 
+
+class Householding:
+
+    def __init__(self, df: pd.DataFrame):
+        self.df = df
+
+    def check_for_duplicates(self):
+        ...
+
+    def split_record(self):
+        ...
