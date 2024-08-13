@@ -12,15 +12,23 @@ def stratified_split(df, columns, n: int = 20):
     :param n: amount of batches
     :return: batchified dataframes
     """
-    batches = []
-    batch_size = len(df) // n
+
     stratify_col = df[columns].astype(str).agg('-'.join, axis=1)
+    # print(stratify_col.to_string())
+    # print(stratify_col.value_counts().to_string())
+    # print(stratify_col.shape[0])
+
+    # for col in columns:
+    #     print(col, df[col].value_counts().shape[0])
 
     stratify_counts = stratify_col.value_counts()
     low_count_groups = stratify_counts[stratify_counts < n].index
     low_counts = df[stratify_col.isin(low_count_groups)]
+    # print(low_counts.shape[0])
     df = df[~stratify_col.isin(low_count_groups)]
 
+    batches = []
+    batch_size = len(df) // n
 
     for i in range(n):
         stratify_col = df[columns].astype(str).agg('-'.join, axis=1)
@@ -54,7 +62,7 @@ def plot_batches(batches, columns, source, save_dir='plots'):
 
     for i, batch in enumerate(batches):
         # print(f"Saving plots for Batch {i + 1}")
-        plt.figure(figsize=(15, 10))
+        plt.figure(figsize=(30, 25))
 
         # Track the position for subplots
         subplot_index = 1
@@ -72,6 +80,7 @@ def plot_batches(batches, columns, source, save_dir='plots'):
                 plt.xlabel(col)
                 plt.ylabel('Frequency')
             subplot_index += 1
+            # print(col, "PLOTTED")
 
         plt.tight_layout()  # Adjust layout to prevent overlap
 
