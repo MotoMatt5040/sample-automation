@@ -267,52 +267,56 @@ class MainWindow(qtw.QWidget):
                 print("Client not supported or not selected.")
 
             if client:
-                client.get_area_codes().to_csv(f"{self.save_path}{self.project_number}_AREACODES.csv")
-                lsam_count = 1
-                csam_count = 1
+                self.save_file(client)
 
-                while True:
-                    path = f'{self.save_path}{self.project_number}LSAM.csv'
-                    if not os.path.exists(path):
-                        # client.final_landline.to_csv(path, index=False)
-                        if not self.landline_radio.isChecked() and not self.cell_radio.isChecked():
-                            client.final_landline.to_csv(path, index=False)
-                        elif self.landline_radio.isChecked():
-                            client.final_df.to_csv(path, index=False)
-                        break
-
-                    path = f'{self.save_path}{self.project_number}LSAM{lsam_count}.csv'
-                    if not os.path.exists(path):
-                        # client.final_landline.to_csv(path, index=False)
-                        if not self.landline_radio.isChecked() and not self.cell_radio.isChecked():
-                            client.final_landline.to_csv(path, index=False)
-                        elif self.landline_radio.isChecked():
-                            client.final_df.to_csv(path, index=False)
-                        break
-
-                    lsam_count += 1
-
-                while True:
-                    path = f'{self.save_path}{self.project_number}CSAM.csv'
-                    if not os.path.exists(path):
-                        if not self.landline_radio.isChecked() and not self.cell_radio.isChecked():
-                            client.final_cell.to_csv(path, index=False)
-                        elif self.cell_radio.isChecked():
-                            client.final_df.to_csv(path, index=False)
-                        break
-
-                    path = f'{self.save_path}{self.project_number}CSAM{csam_count}.csv'
-                    if not os.path.exists(path):
-                        if not self.landline_radio.isChecked() and not self.cell_radio.isChecked():
-                            client.final_cell.to_csv(path, index=False)
-                        elif self.cell_radio.isChecked():
-                            client.final_df.to_csv(path, index=False)
-                        break
-
-                    csam_count += 1
             print("Finished processing")
         except Exception as e:
             print(traceback.format_exc(), e)
+
+    def save_file(self, client):
+        client.get_area_codes().to_csv(f"{self.save_path}{self.project_number}_AREACODES.csv")
+        lsam_count = 1
+        csam_count = 1
+
+        while True:
+            path = f'{self.save_path}{self.project_number}LSAM.csv'
+            if not os.path.exists(path):
+                # client.final_landline.to_csv(path, index=False)
+                if not self.landline_radio.isChecked() and not self.cell_radio.isChecked():
+                    client.final_landline.to_csv(path, index=False)
+                elif self.landline_radio.isChecked():
+                    client.final_df.to_csv(path, index=False)
+                break
+
+            path = f'{self.save_path}{self.project_number}LSAM{lsam_count}.csv'
+            if not os.path.exists(path):
+                # client.final_landline.to_csv(path, index=False)
+                if not self.landline_radio.isChecked() and not self.cell_radio.isChecked():
+                    client.final_landline.to_csv(path, index=False)
+                elif self.landline_radio.isChecked():
+                    client.final_df.to_csv(path, index=False)
+                break
+
+            lsam_count += 1
+
+        while True:
+            path = f'{self.save_path}{self.project_number}CSAM.csv'
+            if not os.path.exists(path):
+                if not self.landline_radio.isChecked() and not self.cell_radio.isChecked():
+                    client.final_cell.to_csv(path, index=False)
+                elif self.cell_radio.isChecked():
+                    client.final_df.to_csv(path, index=False)
+                break
+
+            path = f'{self.save_path}{self.project_number}CSAM{csam_count}.csv'
+            if not os.path.exists(path):
+                if not self.landline_radio.isChecked() and not self.cell_radio.isChecked():
+                    client.final_cell.to_csv(path, index=False)
+                elif self.cell_radio.isChecked():
+                    client.final_df.to_csv(path, index=False)
+                break
+
+            csam_count += 1
 
     def display_sample_frame_headers(self):
         # Create a new layout for column headers
