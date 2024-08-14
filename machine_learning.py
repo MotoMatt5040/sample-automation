@@ -2,6 +2,7 @@ from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
+import os
 
 
 def stratified_split(df, columns, n: int = 20):
@@ -41,8 +42,17 @@ def stratified_split(df, columns, n: int = 20):
 
         batches.append(batch)
 
-    if batches:
-        batches[0] = pd.concat([batches[0], low_counts], ignore_index=True)
+    low_count_per_batch = len(low_counts) // n
+    remainder = len(low_counts) % n
+    start = 0
+
+    for i in range(n):
+        end = start + low_count_per_batch
+        if i < remainder:
+            end += 1
+        batch_low_counts = low_counts.iloc[start:end]
+        batches[i] = pd.concat([batches[i], batch_low_counts], ignore_index=True)
+        start = end
 
     return batches
 
@@ -52,9 +62,9 @@ def plot_batches(batches, columns, source, save_dir='plots'):
     Plot specified columns for each batch and save the plots to files.
     :param batches: list of pandas.DataFrame
     :param columns: list of columns to plot
+    :param source:
     :param save_dir: directory to save the plots
     """
-    import os
 
     # Create save directory if it doesn't exist
     if not os.path.exists(save_dir):
