@@ -99,9 +99,6 @@ class Baselice:
             self.landline_df = df
             self.cell_df = df
             self.headers = df.columns.to_list()
-            # print(self.landline_df.head().to_string())
-            # print(self.cell_df.head().to_string())
-
 
             landline_batches, cell_batches = self.batchify()
         except Exception as e:
@@ -182,8 +179,10 @@ class Baselice:
 
 class I360:
 
-    def __init__(self, df: pd.DataFrame, stratify_by: list, source: str, sample_frame: pd.DataFrame = pd.DataFrame()):
+    def __init__(self, df: pd.DataFrame, stratify_by: list, source: str):
+
         self.source = source
+        self._df = self.initialize_df(df)
         '''
         
         IF 2 or more rows have the same UID (REGARDLESS OF OTHER DATA) -> Delete all except 1 row
@@ -205,110 +204,76 @@ class I360:
         
         '''
 
-        df['RDATE'] = pd.to_datetime(df['RDATE'], errors='coerce')
-        df['RDATE'] = df['RDATE'].dt.strftime('%Y%m%d')
+        if self.source == 'LANDLINE':
+            self.household()
 
-        try:
-            df['PHONE'] = df['PHONE'].str.strip()
-            df['CELL'] = df['CELL'].str.strip()
+        self.stratify_columns = stratify_by
+        # self.set_df(df, source)
+        self.headers = df.columns.to_list()
 
-            df.loc[(df['PHONE'] != '') & (df['CELL'] == ''), 'SOURCE'] = 1
-            df.loc[(df['CELL'] != '') & (df['PHONE'] == ''), 'SOURCE'] = 2
-            df.loc[(df['PHONE'] != '') & (df['CELL'] != ''), 'SOURCE'] = 3
+        batches = self.batchify()
 
-            df['IAGE'] = date.today().year - df['DOBY'].astype(int)
-            df['IAGE'] = df['IAGE'].fillna(0).astype(int)
-            df.loc[df['IAGE'] > 99, 'IAGE'] = 99
-            df = df.sort_values(by='IAGE', ascending=True)
+        for i, batch in enumerate(batches):
+            batch['BATCH'] = i + 1
 
-            party_mapping = {
-                'Republican': 1,
-                'R': 1,
-                'Democrat': 2,
-                'D': 2,
-                'Unaffiliated/Non-Partisan': 3,
-                'I': 3,
-                'Decline to State': 3
-            }
+        self._final_df = pd.concat(batches).reset_index(drop=True)
+        plot_batches(batches, stratify_by, source='landline_')
 
-            df['PRTY'] = df['PARTY'].map(party_mapping).fillna(4).astype(int)
-
-            if source == 'LANDLINE':
-
-                household_columns = [
-                    'FNME2', 'LNME2', 'GEND2', 'PRTY2', 'IAGE2',
-                    'FNME3', 'LNME3', 'GEND3', 'PRTY3', 'IAGE3',
-                    'FNME4', 'LNME4', 'GEND4', 'PRTY4', 'IAGE4'
-                ]
-                groups = {
-                    '2 dupes': pd.DataFrame(),
-                    '3 dupes': pd.DataFrame(),
-                    '4 dupes': pd.DataFrame()
-                }
-
-                for col in household_columns:
-                    df[col] = ''
-
-                group2 = []
-                group3 = []
-                group4 = []
-
-                for phone, group in df.groupby('PHONE'):
-                    if len(group) > 1:
-
-                        first_index = group.index[0]
-                        for i, (fname, lname, gend, prty, iage) in enumerate(zip(group['FNAME'][1:], group['LNAME'][1:], group['GEND'][1:], group['PRTY'][1:], group['IAGE'][1:]), start=2):
-                            df.at[first_index, f'FNME{i}'] = fname
-                            df.at[first_index, f'LNME{i}'] = lname
-                            df.at[first_index, f'GEND{i}'] = gend
-                            df.at[first_index, f'PRTY{i}'] = prty
-                            df.at[first_index, f'IAGE{i}'] = iage
-
-                        if len(group) == 2:
-                            group2.append(group.iloc[1:].copy())
-                        elif len(group) == 3:
-                            group3.append(group.iloc[1:].copy())
-                        elif len(group) == 4:
-                            group4.append(group.iloc[1:].copy())
-
-                if group2:
-                    groups['2 dupes'] = pd.concat(group2)
-                if group3:
-                    groups['3 dupes'] = pd.concat(group3)
-                if group4:
-                    groups['4 dupes'] = pd.concat(group4)
-
-
-
-
-
-                self._groups = groups
-
-
-                # import json
-                # print(json.dumps(groups, indent=4))
-
-                # Remove the duplicates based on the 'PHONE' column, keeping the first occurrence
-                df = df.drop_duplicates(subset=['PHONE'])
-
-            df.to_csv('i360.csv', index=False)
-            self.stratify_columns = stratify_by
-            self.set_df(df, source)
-            self.headers = df.columns.to_list()
-
-            batches = self.batchify()
-
-            for i, batch in enumerate(batches):
-                batch['BATCH'] = i + 1
-
-            self._final_df = pd.concat(batches).reset_index(drop=True)
-            # plot_batches(batches, stratify_by, source='landline_')
-        except Exception as e:
-            print(traceback.format_exc(), e)
 
     def batchify(self) -> tuple:
         final_batches = stratified_split(self.df, self.stratify_columns)
         return final_batches
+
+    def household(self):
+        household_columns = [
+            'FNME2', 'LNME2', 'GEND2', 'PRTY2', 'IAGE2',
+            'FNME3', 'LNME3', 'GEND3', 'PRTY3', 'IAGE3',
+            'FNME4', 'LNME4', 'GEND4', 'PRTY4', 'IAGE4'
+        ]
+        groups = {
+            '2 dupes': pd.DataFrame(),
+            '3 dupes': pd.DataFrame(),
+            '4 dupes': pd.DataFrame()
+        }
+
+        for col in household_columns:
+            self.df[col] = ''
+
+        group2 = []
+        group3 = []
+        group4 = []
+
+        for phone, group in self.df.groupby('PHONE'):
+            if len(group) > 1:
+
+                first_index = group.index[0]
+                for i, (fname, lname, gend, prty, iage) in enumerate(
+                        zip(group['FNAME'][1:], group['LNAME'][1:], group['GEND'][1:], group['PRTY'][1:],
+                            group['IAGE'][1:]), start=2):
+                    self.df.at[first_index, f'FNME{i}'] = fname
+                    self.df.at[first_index, f'LNME{i}'] = lname
+                    self.df.at[first_index, f'GEND{i}'] = gend
+                    self.df.at[first_index, f'PRTY{i}'] = prty
+                    self.df.at[first_index, f'IAGE{i}'] = iage
+
+                if len(group) == 2:
+                    group2.append(group.iloc[1:].copy())
+                elif len(group) == 3:
+                    group3.append(group.iloc[1:].copy())
+                elif len(group) == 4:
+                    group4.append(group.iloc[1:].copy())
+
+        if group2:
+            groups['2 dupes'] = pd.concat(group2)
+        if group3:
+            groups['3 dupes'] = pd.concat(group3)
+        if group4:
+            groups['4 dupes'] = pd.concat(group4)
+
+        self._groups = groups
+
+        # Remove the duplicates based on the 'PHONE' column, keeping the first occurrence
+        self.df = self.df.drop_duplicates(subset=['PHONE'])
 
     def get_area_codes(self):
         return self.df['PHONE'].str[:3].value_counts().head(5)
@@ -325,8 +290,39 @@ class I360:
     def df(self):
         return self._df
 
-    def set_df(self, df, source):
+    @df.setter
+    def df(self, df):
+        self._df = df
+
+    def initialize_df(self, df):
         df = df.copy()
+        df['RDATE'] = pd.to_datetime(df['RDATE'], errors='coerce')
+        df['RDATE'] = df['RDATE'].dt.strftime('%Y%m%d')
+
+        df['PHONE'] = df['PHONE'].str.strip()
+        df['CELL'] = df['CELL'].str.strip()
+
+        df.loc[(df['PHONE'] != '') & (df['CELL'] == ''), 'SOURCE'] = 1
+        df.loc[(df['CELL'] != '') & (df['PHONE'] == ''), 'SOURCE'] = 2
+        df.loc[(df['PHONE'] != '') & (df['CELL'] != ''), 'SOURCE'] = 3
+
+        df['IAGE'] = date.today().year - df['DOBY'].astype(int)
+        df['IAGE'] = df['IAGE'].fillna(0).astype(int)
+        df.loc[df['IAGE'] > 99, 'IAGE'] = 99
+        df = df.sort_values(by='IAGE', ascending=True)
+
+        party_mapping = {
+            'Republican': 1,
+            'R': 1,
+            'Democrat': 2,
+            'D': 2,
+            'Unaffiliated/Non-Partisan': 3,
+            'I': 3,
+            'Decline to State': 3
+        }
+
+        df['PRTY'] = df['PARTY'].map(party_mapping).fillna(4).astype(int)
+
         df['SD'] = df['SD'].astype(str).str.pad(3, fillchar='0')
         df['GCCD20'] = df['GCCD20'].astype(str).str.pad(2, fillchar='0')
         df['GCSSD20'] = df['GCSSD20'].astype(str).str.pad(3, fillchar='0')
@@ -335,19 +331,19 @@ class I360:
         df['GSD22'] = df['GSD22'].astype(str).str.pad(3, fillchar='0')
         df['GHD22'] = df['GHD22'].astype(str).str.pad(3, fillchar='0')
 
-        if source == 'LANDLINE':
+        if self.source == 'LANDLINE':
             df['$N'] = df['PHONE']
             # Make a copy of the filtered DataFrame
             df = df[~df['PHONE'].isin(wdnc)].copy()
             df.loc[:, 'VTYPE'] = 1
-        elif source == 'CELL':
+        elif self.source == 'CELL':
             df['$N'] = df['CELL']
             df.loc[:, 'VTYPE'] = 2
             df.loc[:, 'MD'] = 1
 
         # Reset index and store the DataFrame
         df = df.reset_index(drop=True)
-        self._df = df
+        return df
 
     @property
     def final_df(self):
