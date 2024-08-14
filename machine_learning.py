@@ -62,23 +62,37 @@ def plot_batches(batches, columns, source, save_dir='plots'):
 
     for i, batch in enumerate(batches):
         # print(f"Saving plots for Batch {i + 1}")
-        plt.figure(figsize=(30, 25))
+        plt.figure(figsize=(20, 15))
 
         # Track the position for subplots
         subplot_index = 1
 
         for col in columns:
             plt.subplot(len(columns), 1, subplot_index)  # Create subplot for each column
+            custom_x_values = sorted(batch[col].astype(str).unique())  # Sort the unique values
+
             if pd.api.types.is_numeric_dtype(batch[col]):
-                sns.barplot(x=batch[col].value_counts().index, y=batch[col].value_counts().values, color='blue')
-                plt.title(f'Batch {i + 1} - {col}')
-                plt.xlabel(col)
+                # Count values and reindex with custom x-values
+                counts = batch[col].value_counts().reindex(custom_x_values, fill_value=0)
+                ax = sns.barplot(x=custom_x_values, y=counts.values, color='blue')
                 plt.ylabel('Count')
             else:
-                sns.countplot(x=batch[col], color='blue')
-                plt.title(f'Batch {i + 1} - {col}')
-                plt.xlabel(col)
+                ax = sns.countplot(x=batch[col].astype(str), order=custom_x_values, color='blue')
                 plt.ylabel('Frequency')
+
+            plt.title(f'Batch {i + 1} - {col}')
+            plt.xlabel(col)
+
+            for p in ax.patches:
+                ax.annotate(
+                    f'{p.get_height()}',
+                    (p.get_x() + p.get_width() / 2., p.get_height()),
+                    ha='center', va='baseline',
+                    fontsize=10, color='black', xytext=(0, 3),
+                    textcoords='offset points'
+                )
+
+            # plt.xticks(rotation=45)
             subplot_index += 1
             # print(col, "PLOTTED")
 
