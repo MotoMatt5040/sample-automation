@@ -9,7 +9,7 @@ import pandas as pd
 import json
 
 from tkinter import filedialog
-from clients import Tarrance, Baselice, I360
+from vendor import Tarrance, Baselice, I360
 
 
 def load_json_file(filename):
@@ -29,9 +29,34 @@ def load_json_file(filename):
     return data
 
 
+def get_checked_headers(checkbox_dict: dict[any, qtw.QCheckBox]):
+    checked_headers = [column for column, checkbox in checkbox_dict.items() if checkbox.isChecked()]
+    return checked_headers
+
+
 class MainWindow(qtw.QWidget):
     def __init__(self):
         super().__init__()
+        self.header_checkboxes = None
+        self.header_text_boxes = None
+        self.header_widget_container = None
+        self.assign_checkboxes = None
+        self.match_checkboxes = None
+        self.save_path = None
+        self.project_sample_directory = None
+        self.project_number = None
+        self.json_filename = None
+        self.file_path = None
+        self.process_data_btn = None
+        self.join_path_label = None
+        self.path_label = None
+        self.vendor_label = None
+        self.cell_radio = None
+        self.landline_radio = None
+        self.mixed_radio = None
+        self.radio_buttons_layout = None
+        self.vendor_combo_box = None
+        self.candidate_names_text_box = None
         self.df_initialized = False
         self.join_file_path = None
         self.df = pd.DataFrame()
@@ -50,9 +75,13 @@ class MainWindow(qtw.QWidget):
         # Create the radio buttons for LANDLINE and CELL
         self.radio_buttons_layout = qtw.QVBoxLayout()
 
+        self.mixed_radio = qtw.QRadioButton("MIXED")
         self.landline_radio = qtw.QRadioButton("LANDLINE")
         self.cell_radio = qtw.QRadioButton("CELL")
 
+        self.mixed_radio.setChecked(True)
+
+        self.radio_buttons_layout.addWidget(self.mixed_radio)
         self.radio_buttons_layout.addWidget(self.landline_radio)
         self.radio_buttons_layout.addWidget(self.cell_radio)
 
@@ -61,16 +90,16 @@ class MainWindow(qtw.QWidget):
 
         # Create a vertical layout for the rest of the UI components
         initial_layout = qtw.QVBoxLayout()
-        self.client_label = qtw.QLabel("Select Client")
-        initial_layout.addWidget(self.client_label)
+        self.vendor_label = qtw.QLabel("Select Vendor")
+        initial_layout.addWidget(self.vendor_label)
 
-        self.client_combo_box = qtw.QComboBox(self)
-        self.client_combo_box.addItem("Tarrance")
-        self.client_combo_box.addItem("Baselice")
-        self.client_combo_box.addItem("I360")
-        self.client_combo_box.addItem("DataTrust")
-        self.client_combo_box.addItem("L2")
-        initial_layout.addWidget(self.client_combo_box)
+        vendors = ['Tarrance', 'Baselice', 'I360', 'DataTrust', 'L2', 'RNC']
+
+        self.vendor_combo_box = qtw.QComboBox(self)
+
+        for vendor in vendors:
+            self.vendor_combo_box.addItem(vendor)
+        initial_layout.addWidget(self.vendor_combo_box)
 
         self.candidate_names_text_box = qtw.QTextEdit(
             self,
@@ -81,16 +110,33 @@ class MainWindow(qtw.QWidget):
 
         initial_layout.addWidget(self.candidate_names_text_box)
 
-        self.path_label = qtw.QLabel("Select a file to begin")
-        initial_layout.addWidget(self.path_label)
-        self.join_path_label = qtw.QLabel("Select a file to join")
-        initial_layout.addWidget(self.join_path_label)
-
+        # Create a layout for the path button, label, and clear button
+        path_layout = qtw.QHBoxLayout()
         path_btn = qtw.QPushButton("Select File", clicked=lambda: self.get_file_path())
-        initial_layout.addWidget(path_btn)
+        path_layout.addWidget(path_btn)
 
-        join_path_btn = qtw.QPushButton("Select Join File", clicked=lambda: self.get_join_file_path())
-        initial_layout.addWidget(join_path_btn)
+        self.path_label = qtw.QLabel("Select a file to begin")
+        path_layout.addWidget(self.path_label)
+
+        clear_path_btn = qtw.QPushButton("Clear", clicked=self.clear_file_path)
+        path_layout.addWidget(clear_path_btn)
+
+        path_layout.addStretch()  # Add stretch to push button to the right
+        initial_layout.addLayout(path_layout)
+
+        # Create a layout for the join path button, label, and clear button
+        join_path_layout = qtw.QHBoxLayout()
+        join_path_btn = qtw.QPushButton("Join File", clicked=lambda: self.get_join_file_path())
+        join_path_layout.addWidget(join_path_btn)
+
+        self.join_path_label = qtw.QLabel("Select a file to join")
+        join_path_layout.addWidget(self.join_path_label)
+
+        clear_join_path_btn = qtw.QPushButton("Clear", clicked=self.clear_join_file_path)
+        join_path_layout.addWidget(clear_join_path_btn)
+
+        join_path_layout.addStretch()  # Add stretch to push button to the right
+        initial_layout.addLayout(join_path_layout)
 
         check_headers_btn = qtw.QPushButton("Check Headers", clicked=self.check_headers)
         initial_layout.addWidget(check_headers_btn)
@@ -98,20 +144,28 @@ class MainWindow(qtw.QWidget):
         rename_btn = qtw.QPushButton("Update Headers", clicked=self.update_headers)
         initial_layout.addWidget(rename_btn)
 
-        self.process_data_btn = qtw.QPushButton("Process Data", clicked=self.select_clients)
+        self.process_data_btn = qtw.QPushButton("Process Data", clicked=self.select_vendor)
         initial_layout.addWidget(self.process_data_btn)
+
         main_layout.addLayout(initial_layout)
         self.layout().addLayout(main_layout)
 
+        # Define the methods to clear each file path
+    def clear_file_path(self):
+        self.path_label.setText("Select a file to begin")
+
+    def clear_join_file_path(self):
+        self.join_path_label.setText("Select a file to join")
+
     def check_headers(self):
 
-        client_selection = self.client_combo_box.currentText()
+        vendor_selection = self.vendor_combo_box.currentText()
         json_filename_map = {
             'Tarrance': 'tarrance_replacement.json',
             'Baselice': 'baselice_replacement.json',
             'I360': 'i360_replacement.json'
         }
-        self.json_filename = json_filename_map.get(client_selection)
+        self.json_filename = json_filename_map.get(vendor_selection)
 
         try:
             self.get_data()
@@ -119,9 +173,7 @@ class MainWindow(qtw.QWidget):
                 self.replace_header_names()
                 # Update any necessary UI elements or state
             else:
-                print("Client not supported or not selected.")
-            # self.replace_header_names()
-            # self.display_sample_frame_headers()
+                print("Vendor not supported or not selected.")
             self.display_column_headers()
         except Exception as e:
             print(traceback.format_exc(), e)
@@ -130,7 +182,6 @@ class MainWindow(qtw.QWidget):
         try:
             self.rename_columns()
             self.replace_header_names()
-            # self.display_sample_frame_headers()
             self.display_column_headers()
         except Exception as e:
             print(traceback.format_exc(), e)
@@ -167,11 +218,6 @@ class MainWindow(qtw.QWidget):
 
             if not os.path.exists(self.save_path):
                 os.makedirs(self.save_path)
-            # print(os.listdir(self.project_sample_directory))
-            # for file in os.listdir(self.project_sample_directory):
-            #     if 'SAMPLE FRAME' in file.upper():
-            #         self.sample_frame_path = f'{self.project_sample_directory}/{file}'
-            #         self.sample_frame = pd.read_excel(self.sample_frame_path, sheet_name="Sheet1")
 
         except Exception as e:
             print(traceback.format_exc(), e)
@@ -184,7 +230,7 @@ class MainWindow(qtw.QWidget):
 
     def get_data(self):
         if not self.file_path:
-            raise ("File path is required")
+            raise "File path is required"
 
         self.df_initialized = False
         file_type = self.file_path.split(".")[-1]
@@ -231,178 +277,66 @@ class MainWindow(qtw.QWidget):
 
         self.df = self.df.drop(columns=columns_to_delete_in_df)
 
-    def select_clients(self):
+    def select_vendor(self):
         try:
-            client_selection = self.client_combo_box.currentText()
-            checked_headers = self.get_checked_headers(self.header_checkboxes)
-            client_map = {
+            vendor_selection = self.vendor_combo_box.currentText()
+            checked_headers = get_checked_headers(self.header_checkboxes)
+            vendor_map = {
                 'Tarrance': Tarrance,
                 'Baselice': Baselice,
                 'I360': I360
             }
-            ClientClass = client_map.get(client_selection)
+            VendorClass = vendor_map.get(vendor_selection)
             if self.df.get("CFIPS") is not None:
-                self.df['CFIPS'] = self.df['CFIPS'].astype(str).str.pad(3, fillchar='0')  # This is here because it is the same code width between all clients
+                self.df['CFIPS'] = self.df['CFIPS'].astype(str).str.pad(3, fillchar='0')  # This is here because it is the same code width between all vendors
             if self.df.get("HD") is not None:
                 self.df['HD'] = self.df['HD'].astype(str).str.pad(3, fillchar='0')
             if self.df.get("CD") is not None:
-                self.df['CD'] = self.df['CD'].astype(str).str.pad(2, fillchar='0')  # This is here because it is the same code width between all clients
-            if ClientClass:
-                if client_selection == 'I360':
+                self.df['CD'] = self.df['CD'].astype(str).str.pad(2, fillchar='0')  # This is here because it is the same code width between all vendors
+            if VendorClass:
+                if vendor_selection == 'I360':
                     if self.landline_radio.isChecked():
                         source = 'LANDLINE'
                     elif self.cell_radio.isChecked():
                         source = 'CELL'
                     else:
                         raise ValueError("Please select a source")
-                    # client = ClientClass(self.df, checked_headers, source=source, sample_frame=self.sample_frame)
-                    client = ClientClass(self.df, checked_headers, source=source)
+                    vendor = VendorClass(self.df, checked_headers, source=source)
                     if source == "LANDLINE":
-                        for group, num in client.groups.items():
+                        for group, num in vendor.groups.items():
                             num.to_csv(f'{self.save_path}{group}.csv', index=False)
                 else:
-                    client = ClientClass(self.df, checked_headers)
-                # Process data with the client instance
-            else:
-                print("Client not supported or not selected.")
+                    vendor = VendorClass(self.df, checked_headers)
 
-            if client:
-                self.save_file(client)
+                if vendor:
+                    self.save_file(vendor)
+                # Process data with the vendor instance
+            else:
+                print("Vendor not supported or not selected.")
 
             print("Finished processing")
         except Exception as e:
             print(traceback.format_exc(), e)
 
-    def save_file(self, client):
-        client.get_area_codes().to_csv(f"{self.save_path}{self.project_number}_AREACODES.csv")
-        lsam_count = 1
-        csam_count = 1
+    def save_file(self, vendor):
+        vendor.get_area_codes().to_csv(f"{self.save_path}{self.project_number}_AREACODES.csv")
 
-        while True:
-            path = f'{self.save_path}{self.project_number}LSAM.csv'
-            if not os.path.exists(path):
-                # client.final_landline.to_csv(path, index=False)
-                if not self.landline_radio.isChecked() and not self.cell_radio.isChecked():
-                    client.final_landline.to_csv(path, index=False)
-                elif self.landline_radio.isChecked():
-                    client.final_df.to_csv(path, index=False)
-                break
+        def save_with_counter(base_path, data):
+            count = 0
+            while True:
+                path = f"{base_path}{count if count > 0 else ''}.csv"
+                if not os.path.exists(path):
+                    data.to_csv(path, index=False)
+                    break
+                count += 1
 
-            path = f'{self.save_path}{self.project_number}LSAM{lsam_count}.csv'
-            if not os.path.exists(path):
-                # client.final_landline.to_csv(path, index=False)
-                if not self.landline_radio.isChecked() and not self.cell_radio.isChecked():
-                    client.final_landline.to_csv(path, index=False)
-                elif self.landline_radio.isChecked():
-                    client.final_df.to_csv(path, index=False)
-                break
-
-            lsam_count += 1
-
-        while True:
-            path = f'{self.save_path}{self.project_number}CSAM.csv'
-            if not os.path.exists(path):
-                if not self.landline_radio.isChecked() and not self.cell_radio.isChecked():
-                    client.final_cell.to_csv(path, index=False)
-                elif self.cell_radio.isChecked():
-                    client.final_df.to_csv(path, index=False)
-                break
-
-            path = f'{self.save_path}{self.project_number}CSAM{csam_count}.csv'
-            if not os.path.exists(path):
-                if not self.landline_radio.isChecked() and not self.cell_radio.isChecked():
-                    client.final_cell.to_csv(path, index=False)
-                elif self.cell_radio.isChecked():
-                    client.final_df.to_csv(path, index=False)
-                break
-
-            csam_count += 1
-
-    def display_sample_frame_headers(self):
-        # Create a new layout for column headers
-        grid_layout = qtw.QGridLayout()
-
-        # Create a container widget for column headers
-        header_container = qtw.QWidget()
-        header_container.setLayout(grid_layout)
-
-        # Create a scroll area
-        scroll_area = qtw.QScrollArea()
-        scroll_area.setWidgetResizable(True)
-        scroll_area.setWidget(header_container)
-
-        # Clear any existing column header widgets
-        if hasattr(self, 'header_widget_container'):
-            self.layout().removeWidget(self.sample_frame_header_widget_container)
-            self.sample_frame_header_widget_container.deleteLater()
-
-        # Add the scroll area to the main layout
-        self.sample_frame_header_widget_container = scroll_area
-        self.layout().addWidget(self.sample_frame_header_widget_container)
-
-        # Create and add the "Sample Frame Headers" label
-        title_label = qtw.QLabel("Sample Frame Headers")
-        title_label.setStyleSheet("font-weight: bold; font-size: 16px;")
-        grid_layout.addWidget(title_label, 0, 0, 1, 3)  # Span across the first three columns
-        match_title = qtw.QLabel("Match")
-        header_title = qtw.QLabel("Header")
-        assign_title = qtw.QLabel("Assign")
-        concat_title = qtw.QLabel("Concatenate")
-        grid_layout.addWidget(match_title, 1, 0)
-        grid_layout.addWidget(header_title, 1, 1)
-        grid_layout.addWidget(assign_title, 1, 2)
-        grid_layout.addWidget(concat_title, 1, 3)
-
-        # Add labels, checkboxes, and text boxes for each column header in the DataFrame
-        self.match_checkboxes = {}  # Dictionary to keep track of checkboxes
-        self.assign_checkboxes = {}  # Dictionary to keep track of checkboxes
-
-        row_spacer = 2
-        for index, column in enumerate(self.sample_frame.columns):
-            match_checkbox = qtw.QCheckBox()
-            assign_checkbox = qtw.QCheckBox()
-            label = qtw.QLabel(column)
-            concat = qtw.QLineEdit()
-
-            grid_layout.addWidget(match_checkbox, index + row_spacer, 0)  # Add checkbox to the first column
-            grid_layout.addWidget(label, index + row_spacer, 1)  # Add label to the second column
-            grid_layout.addWidget(assign_checkbox, index + row_spacer, 2)  # Add checkbox to the second column
-            grid_layout.addWidget(concat, index + row_spacer, 3)  # Add text box to the third column
-
-            # Store the text box and checkbox in dictionaries
-            self.match_checkboxes[column] = match_checkbox
-            self.assign_checkboxes[column] = assign_checkbox
-
-        self.add_fields_button = qtw.QPushButton("Add Fields", clicked=self.add_fields_from_sample_frame)
-        grid_layout.addWidget(self.add_fields_button, len(self.sample_frame.columns) + 2, 0, 1, 3)
-
-    # def add_fields_from_sample_frame(self):
-    #     # Add fields to the sample from the sample frame
-    #     match_items = self.get_checked_headers(self.match_checkboxes)
-    #     assign_items = self.get_checked_headers(self.assign_checkboxes)
-    #
-    #     for item in match_items:
-    #         self.df[item] = self.df[item].astype(str).str.strip()
-    #         self.sample_frame[item] = self.sample_frame[item].astype(str).str.strip()
-    #
-    #     for item in assign_items:
-    #         if item not in self.df.columns:
-    #             self.df[item] = float('nan')
-    #
-    #     # Create dictionaries to map CY to DMA and REGN
-    #     dma_map = self.sample_frame.set_index('CY')['DMA'].to_dict()
-    #     regn_map = self.sample_frame.set_index('CY')['REGN'].to_dict()
-    #
-    #     # Update DMA and REGN columns in self.df
-    #     self.df['DMA'] = self.df['CY'].map(dma_map).fillna(self.df['DMA'])
-    #     self.df['REGN'] = self.df['CY'].map(regn_map).fillna(self.df['REGN'])
-    #
-    #     # Print the updated self.df to verify
-    #     print(self.df[["CY", "DMA", "REGN"]].head(50).to_string())
-    #
-    #     '''
-    #     assign assign_items value to self.df where match_items value is equal to self.df value
-    #     '''
+        if not self.landline_radio.isChecked() and not self.cell_radio.isChecked():
+            save_with_counter(f'{self.save_path}{self.project_number}LSAM', vendor.final_landline)
+            save_with_counter(f'{self.save_path}{self.project_number}CSAM', vendor.final_cell)
+        elif self.landline_radio.isChecked():
+            save_with_counter(f'{self.save_path}{self.project_number}LSAM', vendor.final_df)
+        elif self.cell_radio.isChecked():
+            save_with_counter(f'{self.save_path}{self.project_number}CSAM', vendor.final_df)
 
     def display_column_headers(self):
         # Create a new layout for column headers
@@ -462,10 +396,6 @@ class MainWindow(qtw.QWidget):
         # Rename only the columns that have changed names
         if new_columns:
             self.df.rename(columns=new_columns, inplace=True)
-
-    def get_checked_headers(self, checkbox_dict: dict[any, qtw.QCheckBox]):
-        checked_headers = [column for column, checkbox in checkbox_dict.items() if checkbox.isChecked()]
-        return checked_headers
 
     @property
     def df(self) -> pd.DataFrame:
