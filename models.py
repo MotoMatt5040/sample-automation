@@ -82,3 +82,22 @@ class VendorHeaderPadding(Base):
 
     def __repr__(self):
         return f'<VendorHeaderPadding(vendor_id={self.vendor_id}, header_id={self.header_id}, padding_spec={self.padding_spec})>'
+
+
+def create_tables():
+    Base.metadata.create_all(engine)
+
+
+def drop_tables():
+    Base.metadata.drop_all(engine)
+
+
+def add_vendor(vendor_name):
+    vendor = Vendors(vendor_name=vendor_name)
+    session.add(vendor)
+    session.commit()
+
+
+if __name__ == "__main__":
+    create_tables()
+    # drop_tables()
