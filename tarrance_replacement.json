@@ -5,8 +5,7 @@
   "CFIPS": [
     "FIPS"
   ],
-  "GEND": [
-    "SEX",
-    "GENDER"
+  "GENPROP":  [
+    "GENPROPENSITY"
   ]
 }

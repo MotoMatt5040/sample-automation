@@ -3,20 +3,22 @@
     "FIRSTNAME",
     "FIRST NAME"
   ],
-  "LNAME": [
-    "LASTNAME",
-    "LAST NAME"
-  ],
   "MNAME": [
     "MIDDLENAME",
     "MIDDLE NAME"
   ],
+  "LNAME": [
+    "LASTNAME",
+    "LAST NAME"
+  ],
   "LREL": [
-    "PHONE RELIABILITY"
+    "PHONE RELIABILITY",
+    "LANDLINENEUSTARRELIABILITYCODE"
   ],
   "CREL": [
     "CELLPHONE RELIABILITY",
-    "CELL PHONE RELIABILITY"
+    "CELL PHONE RELIABILITY",
+    "CELLNEUSTARRELIABILITYCODE"
   ],
   "DOBY": [
     "BIRTH YEAR"
@@ -31,6 +33,7 @@
     "ABSENTEE STATUS"
   ],
   "CD": [
+    "CONGRESSIONALDISTRICT",
     "CONGRESSIONAL DISTRICT",
     "CONGRESSIONAL DISTRICTS",
     "OFFICIAL CONGRESSIONAL DISTRICT",
@@ -189,5 +192,21 @@
   ],
   "STE2": [
     "STATE"
+  ],
+  "GEND": [
+    "SEX",
+    "GENDER"
+  ],
+  "IAGE": [
+    "AGE"
+  ],
+  "ETHGRP": [
+    "ETHNICITY",
+    "ETHNICGROUP",
+    "ETHNIC GROUP",
+    "ETHNICGROUPNAMEMODELED"
+  ],
+  "TURNOUT": [
+    "TURNOUTGENERAL"
   ]
 }

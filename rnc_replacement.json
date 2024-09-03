@@ -1,0 +1,32 @@
+{
+  "PHONE": [
+    "LANDLINEALL"
+  ],
+  "CELL": [
+    "CELLALL"
+  ],
+  "SLUD": [
+    "STATELEGUPPERDISTRICT"
+  ],
+  "SLLD": [
+    "STATELEGLOWERDISTRICT"
+  ],
+  "RPARTY": [
+    "REGISTEREDPARTY"
+  ],
+  "RPARTYROLLUP": [
+    "REGISTEREDPARTYROLLUP"
+  ],
+  "HHPARTY": [
+    "HOUSEHOLDPARTY"
+  ],
+  "VFREQGEN": [
+    "VOTERFREQUENCYGENERAL"
+  ],
+  "HHIDCUSTOM": [
+    "HOUSEHOLDID_CUSTOM"
+  ],
+  "REGDATE": [
+    "REGISTRATIONDATE"
+  ]
+}
